@@ -454,9 +454,9 @@ shared_memory = { git = "https://github.com/social4hyq/shared_memory", rev = "d7
 # export it for target_env=ohos) and gating naked-fn asm on supported archs
 # (aarch64/x86_64). See social4hyq/vite-task@ohos-port.
 [patch."https://github.com/voidzero-dev/vite-task.git"]
-fspy = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
-vite_path = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
-vite_powershell = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
-vite_str = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
-vite_task = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
-vite_workspace = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
+fspy = { git = "https://github.com/social4hyq/vite-task.git", rev = "c7e7b4072aefc119f5c4453c8349c34b0505e9fd" }
+vite_path = { git = "https://github.com/social4hyq/vite-task.git", rev = "c7e7b4072aefc119f5c4453c8349c34b0505e9fd" }
+vite_powershell = { git = "https://github.com/social4hyq/vite-task.git", rev = "c7e7b4072aefc119f5c4453c8349c34b0505e9fd" }
+vite_str = { git = "https://github.com/social4hyq/vite-task.git", rev = "c7e7b4072aefc119f5c4453c8349c34b0505e9fd" }
+vite_task = { git = "https://github.com/social4hyq/vite-task.git", rev = "c7e7b4072aefc119f5c4453c8349c34b0505e9fd" }
+vite_workspace = { git = "https://github.com/social4hyq/vite-task.git", rev = "c7e7b4072aefc119f5c4453c8349c34b0505e9fd" }
