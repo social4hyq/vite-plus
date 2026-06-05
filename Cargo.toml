@@ -449,3 +449,14 @@ opt-level = "z"
 # shared_memory 0.12.4 pulls nix 0.23 which lacks ohos target_env gates.
 # Fork bumps nix→0.30 + adapts API. See social4hyq/shared_memory@nix-030-ohos.
 shared_memory = { git = "https://github.com/social4hyq/shared_memory", rev = "d7452916fcb3963a420428625f6afcd09b961612" }
+
+# vite-task fspy_preload_unix needs OHOS gate on execveat (libc 0.2.186 doesn't
+# export it for target_env=ohos) and gating naked-fn asm on supported archs
+# (aarch64/x86_64). See social4hyq/vite-task@ohos-port.
+[patch."https://github.com/voidzero-dev/vite-task.git"]
+fspy = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
+vite_path = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
+vite_powershell = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
+vite_str = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
+vite_task = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
+vite_workspace = { git = "https://github.com/social4hyq/vite-task.git", rev = "e7e834039dd167668bd521fbe8f624576f297344" }
