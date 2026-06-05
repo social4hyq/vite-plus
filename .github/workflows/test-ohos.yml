@@ -8,10 +8,12 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        # armv7-unknown-linux-ohos is omitted: vite_js_runtime has
+        # `compile_error!("Unsupported CPU architecture. vite_js_runtime only
+        # supports x86_64 and aarch64.")` — 32-bit ARM is unsupported upstream.
         target:
           - aarch64-unknown-linux-ohos
           - x86_64-unknown-linux-ohos
-          - armv7-unknown-linux-ohos
 
     name: build-${{ matrix.target }}
     runs-on: ubuntu-latest
