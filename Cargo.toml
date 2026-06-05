@@ -444,3 +444,8 @@ opt-level = "z"
 # The installer binary is downloaded by users, so optimize for size.
 [profile.release.package.vite_installer]
 opt-level = "z"
+
+[patch.crates-io]
+# shared_memory 0.12.4 pulls nix 0.23 which lacks ohos target_env gates.
+# Fork bumps nix→0.30 + adapts API. See social4hyq/shared_memory@nix-030-ohos.
+shared_memory = { git = "https://github.com/social4hyq/shared_memory", rev = "d7452916fcb3963a420428625f6afcd09b961612" }
