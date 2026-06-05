@@ -1,0 +1,73 @@
+name: test-ohos
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-ohos:
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - aarch64-unknown-linux-ohos
+          - x86_64-unknown-linux-ohos
+          - armv7-unknown-linux-ohos
+
+    name: build-${{ matrix.target }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Setup rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Setup OpenHarmony SDK
+        uses: Boshen/setup-ohos-sdk@edb865a89a712f1f15dbad932dfa9cfce849d95c # v1.0.0
+
+      - name: Configure OHOS linker
+        run: |
+          echo "${OHOS_SDK_NATIVE}/llvm/bin" >> $GITHUB_PATH
+          CLANG="${OHOS_SDK_NATIVE}/llvm/bin/clang"
+          printf '#!/bin/sh\nexec %s --target=aarch64-linux-ohos "$@"\n' "$CLANG" > /tmp/aarch64-linux-ohos-clang
+          printf '#!/bin/sh\nexec %s --target=arm-linux-ohos "$@"\n'   "$CLANG" > /tmp/arm-linux-ohos-clang
+          printf '#!/bin/sh\nexec %s --target=x86_64-linux-ohos "$@"\n' "$CLANG" > /tmp/x86_64-linux-ohos-clang
+          chmod +x /tmp/aarch64-linux-ohos-clang /tmp/arm-linux-ohos-clang /tmp/x86_64-linux-ohos-clang
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_OHOS_LINKER=/tmp/aarch64-linux-ohos-clang" >> $GITHUB_ENV
+          echo "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_OHOS_LINKER=/tmp/arm-linux-ohos-clang" >> $GITHUB_ENV
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_OHOS_LINKER=/tmp/x86_64-linux-ohos-clang" >> $GITHUB_ENV
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_OHOS_RUSTFLAGS=-C link-arg=-fuse-ld=lld -C link-arg=-lm" >> $GITHUB_ENV
+          echo "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_OHOS_RUSTFLAGS=-C link-arg=-fuse-ld=lld -C link-arg=-lm" >> $GITHUB_ENV
+          echo "CARGO_TARGET_X86_64_UNKNOWN_LINUX_OHOS_RUSTFLAGS=-C link-arg=-fuse-ld=lld -C link-arg=-lm" >> $GITHUB_ENV
+
+      - name: Build (Napi binding + CLI)
+        uses: ./.github/actions/build-upstream
+        with:
+          target: ${{ matrix.target }}
+
+      - name: Verify artifacts
+        run: |
+          echo "=== Napi bindings ==="
+          ls -lh packages/cli/binding/*.node 2>/dev/null || echo "No .node found in binding/"
+          echo "=== CLI binary ==="
+          ls -lh target/${{ matrix.target }}/release/vp 2>/dev/null || echo "No vp binary found"
+          file packages/cli/binding/*.node 2>/dev/null
+          file target/${{ matrix.target }}/release/vp 2>/dev/null
+
+      - name: Upload Napi binding artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vite-plus-binding-${{ matrix.target }}
+          path: ./packages/cli/binding/*.node
+          if-no-files-found: warn
+
+      - name: Upload CLI binary artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vite-plus-cli-${{ matrix.target }}
+          path: ./target/${{ matrix.target }}/release/vp
+          if-no-files-found: warn
