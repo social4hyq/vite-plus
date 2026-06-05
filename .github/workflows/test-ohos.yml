@@ -28,6 +28,9 @@ jobs:
       - name: Install pnpm
         uses: pnpm/action-setup@v2
 
+      - name: Install dependencies
+        run: pnpm install
+
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
