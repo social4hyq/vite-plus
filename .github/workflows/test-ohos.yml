@@ -97,14 +97,7 @@ jobs:
           rm -rf vite-plus-deploy/node_modules
           rm -f vite-plus-deploy/pnpm-lock.yaml
           # Write postinstall script to copy rolldown ohos binding to vite-plus-core
-          cat > vite-plus-deploy/postinstall-ohos.mjs << 'SCRIPT'
-import { copyFileSync, existsSync } from 'node:fs';
-import { join } from 'node:path';
-const cwd = process.env.INIT_CWD || process.cwd();
-const src = join(cwd, 'node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node');
-const dst = join(cwd, 'node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/rolldown-binding.openharmony-arm64.node');
-if (existsSync(src)) { copyFileSync(src, dst); console.log('Copied rolldown ohos binding'); }
-SCRIPT
+          node -e "const fs=require('fs'); fs.writeFileSync('vite-plus-deploy/postinstall-ohos.mjs', ['import{copyFileSync,existsSync}from\"node:fs\";','import{join}from\"node:path\";','const cwd=process.env.INIT_CWD||process.cwd();','const src=join(cwd,\"node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node\");','const dst=join(cwd,\"node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/rolldown-binding.openharmony-arm64.node\");','if(existsSync(src)){copyFileSync(src,dst);console.log(\"Copied rolldown ohos binding\");}'].join('\n')); console.log('Wrote postinstall-ohos.mjs');"
 
       - name: Package minimal bundle
         run: tar -czf vite-plus-ohos-aarch64.tar.gz -C vite-plus-deploy .
