@@ -74,11 +74,43 @@ jobs:
           path: ./target/${{ matrix.target }}/release/vp
 
       - name: Deploy vite-plus npm package
-        run: pnpm --filter=vite-plus deploy --prod --legacy --no-optional vite-plus-deploy
+        run: pnpm --filter=vite-plus deploy --prod --legacy vite-plus-deploy
+
+      - name: Fix package.json and add ohos-signpost
+        run: |
+          cp target/${{ matrix.target }}/release/vp vite-plus-deploy/
+          node -e "
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('vite-plus-deploy/package.json','utf8'));
+          // Resolve catalog: refs from workspace pnpm-workspace.yaml
+          const ws = fs.readFileSync('pnpm-workspace.yaml','utf8');
+          const cat = {};
+          const re = /^  '?(@?[\w@\/-]+?)'?: (.*)$/gm;
+          let m;
+          while ((m = re.exec(ws))) cat[m[1]] = m[2].replace(/^=/, '');
+          function resolve(deps) { if (!deps) return; for (const k of Object.keys(deps)) { if (deps[k] === 'catalog:' && cat[k]) deps[k] = cat[k]; } }
+          resolve(pkg.dependencies); resolve(pkg.devDependencies);
+          // Add ohos-signpost postinstall
+          pkg.scripts ||= {}; pkg.scripts.postinstall = 'ohos-signpost';
+          pkg.devDependencies ||= {}; pkg.devDependencies['ohos-signpost'] = '^1.0.2';
+          fs.writeFileSync('vite-plus-deploy/package.json', JSON.stringify(pkg, null, 2));
+          const remaining = Object.entries({...pkg.dependencies, ...pkg.devDependencies}).filter(([,v]) => v === 'catalog:');
+          if (remaining.length) { console.error('Unresolved catalog:', remaining); process.exit(1); }
+          console.log('All catalog: refs resolved, ohos-signpost added');
+          "
+
+      - name: Install deps with ohos bindings
+        run: cd vite-plus-deploy && npm install 2>&1 | tail -5 && cd ..
+
+      - name: Verify ohos bindings present
+        run: |
+          echo "=== vite-plus binding ===" && ls -lh vite-plus-deploy/binding/*.node
+          echo "=== rolldown binding ===" && find vite-plus-deploy -name '*rolldown*openharmony*.node' -exec ls -lh {} \;
+          echo "=== oxfmt binding ===" && find vite-plus-deploy -path '*/oxfmt/bin/*' -exec ls -lh {} \;
+          echo "=== oxlint binding ===" && find vite-plus-deploy -name '*oxlint*' -path '*/bin/*' -exec ls -lh {} \;
 
       - name: Package runtime bundle
         run: |
-          cp target/${{ matrix.target }}/release/vp vite-plus-deploy/
           tar -czf vite-plus-ohos-aarch64.tar.gz -C vite-plus-deploy .
 
       - name: Upload runtime bundle
@@ -86,3 +118,10 @@ jobs:
         with:
           name: vite-plus-ohos-aarch64-runtime
           path: ./vite-plus-ohos-aarch64.tar.gz
+
+      - name: Test vp commands
+        run: |
+          mkdir -p /tmp/vp-test && tar -xzf vite-plus-ohos-aarch64.tar.gz -C /tmp/vp-test
+          cd /tmp/vp-test
+          echo "=== vp --version ===" && ./vp --version 2>&1 | head -3
+          echo "=== vp fmt (check) ===" && ./vp fmt --check 2>&1 | head -5
