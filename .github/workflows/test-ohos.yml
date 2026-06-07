@@ -132,16 +132,7 @@ jobs:
           cp /tmp/ohos-pkgs/package/rolldown-binding.openharmony-arm64.node node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/
           # Create oxfmt bin wrapper (pnpm deploy leaves bin/ empty)
           OXFMT_BIN="$(find node_modules -path '*/oxfmt/bin' -type d | head -1)/oxfmt"
-          cat > "$OXFMT_BIN" << 'WRAPPER'
-#!/usr/bin/env node
-import { createRequire } from 'node:module';
-import { dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-const require = createRequire(import.meta.url);
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const binding = require('../dist/oxfmt.openharmony-arm64.node');
-if (typeof binding.r === 'function') { binding.r(); }
-WRAPPER
+          printf '#!/usr/bin/env node\nimport { createRequire } from '"'"'node:module'"'"';\nimport { dirname } from '"'"'node:path'"'"';\nimport { fileURLToPath } from '"'"'node:url'"'"';\nconst require = createRequire(import.meta.url);\nconst __dirname = dirname(fileURLToPath(import.meta.url));\nconst binding = require('"'"'../dist/oxfmt.openharmony-arm64.node'"'"');\nif (typeof binding.r === '"'"'function'"'"') { binding.r(); }\n' > "$OXFMT_BIN"
           chmod +x "$OXFMT_BIN"
           echo "Created oxfmt bin wrapper: $OXFMT_BIN"
           cd ..
