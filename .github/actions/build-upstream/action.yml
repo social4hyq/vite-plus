@@ -88,14 +88,19 @@ runs:
         tool: cargo-zigbuild
 
     # OHOS (OpenHarmony) cross-compilation setup.
-    # @napi-rs/cli >=3.2.0 supports OHOS natively via @napi-rs/cross-toolchain;
-    # no manual NDK download needed.
+    # @napi-rs/cli's setOpenHarmonyEnv() reads OHOS_SDK_NATIVE to configure
+    # the cross linker/AR/CC paths from the NDK. Boshen/setup-ohos-sdk
+    # exports OHOS_SDK_NATIVE via $GITHUB_ENV.
     - name: Add OHOS Rust target
       if: steps.cache-restore.outputs.cache-hit != 'true' && contains(inputs.target, 'ohos')
       shell: bash
       run: rustup target add ${INPUTS_TARGET}
       env:
         INPUTS_TARGET: ${{ inputs.target }}
+
+    - name: Setup OpenHarmony SDK
+      if: steps.cache-restore.outputs.cache-hit != 'true' && contains(inputs.target, 'ohos')
+      uses: Boshen/setup-ohos-sdk@edb865a89a712f1f15dbad932dfa9cfce849d95c # v1.0.0
 
     # NAPI builds - only run on cache miss (slow, especially on Windows)
     # Must run before vite-plus TypeScript builds which depend on the bindings
@@ -127,6 +132,7 @@ runs:
       run: |
         pnpm --filter=vite-plus build-native --target ${INPUTS_TARGET}
       env:
+        TARGET_CC: clang
         DEBUG: napi:*
         INPUTS_TARGET: ${{ inputs.target }}
 
@@ -167,6 +173,7 @@ runs:
       run: |
         pnpm exec napi build --target ${INPUTS_TARGET} --release -p vite_global_cli
       env:
+        TARGET_CC: clang
         DEBUG: napi:*
         INPUTS_TARGET: ${{ inputs.target }}
 
