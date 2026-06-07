@@ -93,7 +93,7 @@ jobs:
           // Remove workspace:* deps (already bundled into dist/)
           function removeWorkspace(deps) { if (!deps) return; for (const k of Object.keys(deps)) { if (deps[k] === 'workspace:*') delete deps[k]; } }
           removeWorkspace(pkg.dependencies); removeWorkspace(pkg.devDependencies);
-          // Add ohos-signpost postinstall
+          // Add ohos-signpost postinstall (signs .node files on OHOS device)
           pkg.scripts ||= {}; pkg.scripts.postinstall = 'ohos-signpost';
           pkg.devDependencies ||= {}; pkg.devDependencies['ohos-signpost'] = '^1.0.2';
           fs.writeFileSync('vite-plus-deploy/package.json', JSON.stringify(pkg, null, 2));
@@ -105,13 +105,17 @@ jobs:
       - name: Install deps and inject ohos bindings
         run: |
           cd vite-plus-deploy
-          # npm on x64 CI won't pick openharmony-arm64 optional deps, install them explicitly
-          npm install --ignore-scripts @oxfmt/binding-openharmony-arm64 @rolldown/binding-openharmony-arm64 2>&1 | tail -3
-          # Then install everything else (linux-x64 bindings etc.)
-          npm install 2>&1 | tail -5
+          # npm install chokes on pnpm deploy's node_modules, use npm pack + manual cp instead
+          mkdir -p /tmp/ohos-pkgs
+          cd /tmp/ohos-pkgs
+          npm pack @oxfmt/binding-openharmony-arm64 2>&1 | tail -1
+          npm pack @rolldown/binding-openharmony-arm64 2>&1 | tail -1
+          tar -xzf oxfmt-binding-openharmony-arm64-*.tgz
+          tar -xzf rolldown-binding-openharmony-arm64-*.tgz
+          cd -
           # Copy ohos bindings into the dist dirs where the JS loaders expect them
-          cp node_modules/@oxfmt/binding-openharmony-arm64/oxfmt.openharmony-arm64.node node_modules/oxfmt/dist/
-          cp node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/
+          cp /tmp/ohos-pkgs/package/oxfmt.openharmony-arm64.node node_modules/oxfmt/dist/
+          cp /tmp/ohos-pkgs/package/rolldown-binding.openharmony-arm64.node node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/
           cd ..
 
       - name: Verify ohos bindings present
