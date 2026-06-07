@@ -102,12 +102,23 @@ jobs:
       - name: Install deps with ohos bindings
         run: cd vite-plus-deploy && npm install 2>&1 | tail -5 && cd ..
 
-      - name: Verify ohos bindings present
+      - name: Also install linux-x64 bindings for local verification
+        run: |
+          cd vite-plus-deploy
+          npm install --ignore-scripts @oxfmt/binding-linux-x64-gnu @rolldown/binding-linux-x64-gnu 2>&1 | tail -3
+          # Copy x64 bindings alongside ohos ones so oxfmt/rolldown can load them on x64 host
+          cp node_modules/@oxfmt/binding-linux-x64-gnu/oxfmt.linux-x64-gnu.node node_modules/oxfmt/dist/ 2>/dev/null || true
+          cp node_modules/@rolldown/binding-linux-x64-gnu/rolldown-binding.linux-x64-gnu.node node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/ 2>/dev/null || true
+          cd ..
+
+      - name: Verify all bindings present
         run: |
           echo "=== vite-plus binding ===" && ls -lh vite-plus-deploy/binding/*.node
-          echo "=== rolldown binding ===" && find vite-plus-deploy -name '*rolldown*openharmony*.node' -exec ls -lh {} \;
-          echo "=== oxfmt binding ===" && find vite-plus-deploy -path '*/oxfmt/bin/*' -exec ls -lh {} \;
-          echo "=== oxlint binding ===" && find vite-plus-deploy -name '*oxlint*' -path '*/bin/*' -exec ls -lh {} \;
+          echo "=== rolldown ohos ===" && find vite-plus-deploy -name '*rolldown*openharmony*.node' -exec ls -lh {} \;
+          echo "=== rolldown x64 ===" && find vite-plus-deploy -name '*rolldown*x64*.node' -exec ls -lh {} \;
+          echo "=== oxfmt ohos ===" && find vite-plus-deploy -name '*oxfmt*openharmony*.node' -exec ls -lh {} \;
+          echo "=== oxfmt x64 ===" && find vite-plus-deploy -name '*oxfmt*x64*.node' -exec ls -lh {} \;
+          echo "=== oxlint ===" && find vite-plus-deploy -name '*oxlint*' -path '*/bin/*' -exec ls -lh {} \;
 
       - name: Package runtime bundle
         run: |
@@ -123,5 +134,6 @@ jobs:
         run: |
           mkdir -p /tmp/vp-test && tar -xzf vite-plus-ohos-aarch64.tar.gz -C /tmp/vp-test
           cd /tmp/vp-test
-          echo "=== vp --version ===" && ./vp --version 2>&1 | head -3
-          echo "=== vp fmt (check) ===" && ./vp fmt --check 2>&1 | head -5
+          echo "=== vp --version ===" && ./vp --version 2>&1 | head -3 || echo "(aarch64 binary, expected on x64 CI)"
+          echo "=== node dist/bin.js --version ===" && node dist/bin.js --version 2>&1 | head -3
+          echo "=== node dist/bin.js fmt --check ===" && node dist/bin.js fmt --check 2>&1 | head -10
