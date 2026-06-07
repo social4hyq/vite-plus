@@ -2,6 +2,8 @@ name: test-ohos
 
 on:
   workflow_dispatch:  # v2
+  push:
+    branches: [main]
 
 jobs:
   build-ohos:
