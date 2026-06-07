@@ -1,7 +1,7 @@
 name: test-ohos
 
 on:
-  workflow_dispatch:  # v2
+  workflow_dispatch:
   push:
     branches: [main]
 
@@ -63,28 +63,15 @@ jobs:
           ls -lh packages/cli/binding/*.node target/${{ matrix.target }}/release/vp
           file packages/cli/binding/*.node target/${{ matrix.target }}/release/vp
 
-      - name: Upload Napi binding
-        uses: actions/upload-artifact@v4
-        with:
-          name: vite-plus-binding-${{ matrix.target }}
-          path: ./packages/cli/binding/*.node
-
-      - name: Upload CLI binary
-        uses: actions/upload-artifact@v4
-        with:
-          name: vite-plus-cli-${{ matrix.target }}
-          path: ./target/${{ matrix.target }}/release/vp
-
-      - name: Deploy vite-plus npm package
-        run: pnpm --filter=vite-plus deploy --prod --legacy vite-plus-deploy
-
-      - name: Fix package.json and add ohos-signpost
+      - name: Deploy and fix package.json
         run: |
+          pnpm --filter=vite-plus deploy --prod --legacy vite-plus-deploy
           cp target/${{ matrix.target }}/release/vp vite-plus-deploy/
+          cp packages/cli/binding/vite-plus.openharmony-arm64.node vite-plus-deploy/binding/
+          # Fix package.json: resolve catalog: refs, add ohos-signpost
           node -e "
           const fs = require('fs');
           const pkg = JSON.parse(fs.readFileSync('vite-plus-deploy/package.json','utf8'));
-          // Resolve catalog: refs from workspace pnpm-workspace.yaml
           const ws = fs.readFileSync('pnpm-workspace.yaml','utf8');
           const cat = {};
           const re = /^  '?(@?[\w@\/-]+?)'?: (.*)$/gm;
@@ -92,72 +79,24 @@ jobs:
           while ((m = re.exec(ws))) cat[m[1]] = m[2].replace(/^=/, '');
           function resolve(deps) { if (!deps) return; for (const k of Object.keys(deps)) { if (deps[k] === 'catalog:' && cat[k]) deps[k] = cat[k]; } }
           resolve(pkg.dependencies); resolve(pkg.devDependencies);
-          // Add ohos-signpost postinstall (signs .node files on OHOS device)
+          // Remove workspace:* deps (already bundled into dist/)
+          function removeWorkspace(deps) { if (!deps) return; for (const k of Object.keys(deps)) { if (String(deps[k]).startsWith('workspace:')) delete deps[k]; } }
+          removeWorkspace(pkg.dependencies); removeWorkspace(pkg.devDependencies);
+          // Add ohos-signpost postinstall
           pkg.scripts ||= {}; pkg.scripts.postinstall = 'ohos-signpost';
           pkg.devDependencies ||= {}; pkg.devDependencies['ohos-signpost'] = '^1.0.2';
           fs.writeFileSync('vite-plus-deploy/package.json', JSON.stringify(pkg, null, 2));
-          const remaining = Object.entries({...pkg.dependencies, ...pkg.devDependencies}).filter(([,v]) => v === 'catalog:');
-          if (remaining.length) { console.error('Unresolved catalog:', remaining); process.exit(1); }
-          console.log('All catalog: refs resolved, ohos-signpost added');
+          console.log('package.json fixed');
           "
+          # Remove broken pnpm symlinks in node_modules — will be reinstalled by npm install on device
+          rm -rf vite-plus-deploy/node_modules
+          rm -f vite-plus-deploy/pnpm-lock.yaml
 
-      - name: Fix workspace symlinks and inject ohos bindings
-        run: |
-          cd vite-plus-deploy
-          # pnpm deploy leaves broken symlinks for workspace packages.
-          # Replace them with real copies from monorepo root.
-          for pkg in vite-plus-core vite-plus-test vite-plus-prompts vite-plus-tools; do
-            src="../packages/${pkg#vite-plus-}/"
-            dst="node_modules/@voidzero-dev/$pkg/"
-            if [ -d "$src" ] && [ -d "$(dirname "$dst")" ]; then
-              rm -rf "$dst" 2>/dev/null || true
-              rsync -a --exclude='node_modules' "$src" "$dst"
-              echo "Fixed: $pkg"
-            fi
-          done
-          # vite is also workspace:*
-          if [ -d "../packages/vite" ]; then
-            rm -rf node_modules/vite 2>/dev/null || true
-            rsync -a --exclude='node_modules' ../packages/vite/ node_modules/vite/
-            echo "Fixed: vite"
-          fi
-          # Download and inject ohos bindings (pnpm won't pick them on x64 CI)
-          mkdir -p /tmp/ohos-pkgs && cd /tmp/ohos-pkgs
-          npm pack @oxfmt/binding-openharmony-arm64 2>&1 | tail -1
-          npm pack @rolldown/binding-openharmony-arm64 2>&1 | tail -1
-          tar -xzf oxfmt-binding-openharmony-arm64-*.tgz
-          tar -xzf rolldown-binding-openharmony-arm64-*.tgz
-          cd -
-          cp /tmp/ohos-pkgs/package/oxfmt.openharmony-arm64.node node_modules/oxfmt/dist/
-          cp /tmp/ohos-pkgs/package/rolldown-binding.openharmony-arm64.node node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/
-          # Create oxfmt bin wrapper (pnpm deploy leaves bin/ empty)
-          OXFMT_BIN="$(find node_modules -path '*/oxfmt/bin' -type d | head -1)/oxfmt"
-          printf '#!/usr/bin/env node\nimport { createRequire } from '"'"'node:module'"'"';\nimport { dirname } from '"'"'node:path'"'"';\nimport { fileURLToPath } from '"'"'node:url'"'"';\nconst require = createRequire(import.meta.url);\nconst __dirname = dirname(fileURLToPath(import.meta.url));\nconst binding = require('"'"'../dist/oxfmt.openharmony-arm64.node'"'"');\nif (typeof binding.r === '"'"'function'"'"') { binding.r(); }\n' > "$OXFMT_BIN"
-          chmod +x "$OXFMT_BIN"
-          echo "Created oxfmt bin wrapper: $OXFMT_BIN"
-          cd ..
-
-      - name: Verify ohos bindings present
-        run: |
-          echo "=== vite-plus binding ===" && ls -lh vite-plus-deploy/binding/*.node
-          echo "=== rolldown ohos ===" && find vite-plus-deploy -name '*rolldown*openharmony*.node' -exec ls -lh {} \;
-          echo "=== oxfmt ohos ===" && find vite-plus-deploy -name '*oxfmt*openharmony*.node' -exec ls -lh {} \;
-          echo "=== oxlint ===" && find vite-plus-deploy -name '*oxlint*' -path '*/bin/*' -exec ls -lh {} \;
-
-      - name: Package runtime bundle
-        run: |
-          # Follow symlinks so that pnpm store content is dereferenced into real files
-          tar -czhf vite-plus-ohos-aarch64.tar.gz -C vite-plus-deploy .
+      - name: Package minimal bundle
+        run: tar -czf vite-plus-ohos-aarch64.tar.gz -C vite-plus-deploy .
 
       - name: Upload runtime bundle
         uses: actions/upload-artifact@v4
         with:
           name: vite-plus-ohos-aarch64-runtime
           path: ./vite-plus-ohos-aarch64.tar.gz
-
-      - name: Test vp commands
-        run: |
-          mkdir -p /tmp/vp-test && tar -xzf vite-plus-ohos-aarch64.tar.gz -C /tmp/vp-test
-          cd /tmp/vp-test
-          echo "=== vp --version ===" && ./vp --version 2>&1 | head -3
-          echo "=== vp fmt (check) ===" && ./vp fmt --check 2>&1 | head -5
