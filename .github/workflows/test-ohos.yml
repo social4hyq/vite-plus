@@ -109,14 +109,14 @@ jobs:
             dst="node_modules/@voidzero-dev/$pkg/"
             if [ -d "$src" ] && [ -d "$(dirname "$dst")" ]; then
               rm -rf "$dst" 2>/dev/null || true
-              cp -rL "$src" "$dst"
+              rsync -a --exclude='node_modules' "$src" "$dst"
               echo "Fixed: $pkg"
             fi
           done
           # vite is also workspace:*
           if [ -d "../packages/vite" ]; then
             rm -rf node_modules/vite 2>/dev/null || true
-            cp -rL ../packages/vite/ node_modules/vite/
+            rsync -a --exclude='node_modules' ../packages/vite/ node_modules/vite/
             echo "Fixed: vite"
           fi
           # Download and inject ohos bindings (pnpm won't pick them on x64 CI)
