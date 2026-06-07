@@ -90,11 +90,14 @@ jobs:
           while ((m = re.exec(ws))) cat[m[1]] = m[2].replace(/^=/, '');
           function resolve(deps) { if (!deps) return; for (const k of Object.keys(deps)) { if (deps[k] === 'catalog:' && cat[k]) deps[k] = cat[k]; } }
           resolve(pkg.dependencies); resolve(pkg.devDependencies);
+          // Remove workspace:* deps (already bundled into dist/)
+          function removeWorkspace(deps) { if (!deps) return; for (const k of Object.keys(deps)) { if (deps[k] === 'workspace:*') delete deps[k]; } }
+          removeWorkspace(pkg.dependencies); removeWorkspace(pkg.devDependencies);
           // Add ohos-signpost postinstall
           pkg.scripts ||= {}; pkg.scripts.postinstall = 'ohos-signpost';
           pkg.devDependencies ||= {}; pkg.devDependencies['ohos-signpost'] = '^1.0.2';
           fs.writeFileSync('vite-plus-deploy/package.json', JSON.stringify(pkg, null, 2));
-          const remaining = Object.entries({...pkg.dependencies, ...pkg.devDependencies}).filter(([,v]) => v === 'catalog:');
+          const remaining = Object.entries({...pkg.dependencies, ...pkg.devDependencies}).filter(([,v]) => v === 'catalog:' || v === 'workspace:*');
           if (remaining.length) { console.error('Unresolved catalog:', remaining); process.exit(1); }
           console.log('All catalog: refs resolved, ohos-signpost added');
           "
