@@ -82,6 +82,10 @@ jobs:
           // Remove workspace:* deps (already bundled into dist/)
           function removeWorkspace(deps) { if (!deps) return; for (const k of Object.keys(deps)) { if (String(deps[k]).startsWith('workspace:')) delete deps[k]; } }
           removeWorkspace(pkg.dependencies); removeWorkspace(pkg.devDependencies);
+          // Add back workspace deps that dist/ still imports from npm
+          pkg.dependencies ||= {};
+          pkg.dependencies['@voidzero-dev/vite-plus-core'] = pkg.version || '0.1.24';
+          pkg.dependencies['@voidzero-dev/vite-plus-test'] = pkg.version || '0.1.24';
           // Add ohos-signpost postinstall
           pkg.scripts ||= {}; pkg.scripts.postinstall = 'ohos-signpost';
           pkg.devDependencies ||= {}; pkg.devDependencies['ohos-signpost'] = '^1.0.2';
