@@ -86,8 +86,9 @@ jobs:
           pkg.dependencies ||= {};
           pkg.dependencies['@voidzero-dev/vite-plus-core'] = pkg.version || '0.1.24';
           pkg.dependencies['@voidzero-dev/vite-plus-test'] = pkg.version || '0.1.24';
-          // Add ohos-signpost postinstall
-          pkg.scripts ||= {}; pkg.scripts.postinstall = 'ohos-signpost';
+          // Add ohos-signpost postinstall + rolldown binding copy
+          pkg.scripts ||= {};
+          pkg.scripts.postinstall = 'node -e "const fs=require(\'fs\'),p=require(\'path\');try{const s=p.join(process.env.INIT_CWD||process.cwd(),\'node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node\');const d=p.join(process.env.INIT_CWD||process.cwd(),\'node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/rolldown-binding.openharmony-arm64.node\');if(fs.existsSync(s)){fs.copyFileSync(s,d);console.log(\'Copied rolldown ohos binding\')}}catch(e){console.error(e)}" && ohos-signpost';
           pkg.devDependencies ||= {}; pkg.devDependencies['ohos-signpost'] = '^1.0.2';
           fs.writeFileSync('vite-plus-deploy/package.json', JSON.stringify(pkg, null, 2));
           console.log('package.json fixed');
