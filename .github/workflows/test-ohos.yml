@@ -99,15 +99,24 @@ jobs:
           console.log('All catalog: refs resolved, ohos-signpost added');
           "
 
-      - name: Install deps with ohos bindings
-        run: cd vite-plus-deploy && npm install 2>&1 | tail -5 && cd ..
+      - name: Install deps and inject ohos bindings
+        run: |
+          cd vite-plus-deploy
+          # npm on x64 CI won't pick openharmony-arm64 optional deps, install them explicitly
+          npm install --ignore-scripts @oxfmt/binding-openharmony-arm64 @rolldown/binding-openharmony-arm64 2>&1 | tail -3
+          # Then install everything else (linux-x64 bindings etc.)
+          npm install 2>&1 | tail -5
+          # Copy ohos bindings into the dist dirs where the JS loaders expect them
+          cp node_modules/@oxfmt/binding-openharmony-arm64/oxfmt.openharmony-arm64.node node_modules/oxfmt/dist/
+          cp node_modules/@rolldown/binding-openharmony-arm64/rolldown-binding.openharmony-arm64.node node_modules/@voidzero-dev/vite-plus-core/dist/rolldown/shared/
+          cd ..
 
       - name: Verify ohos bindings present
         run: |
           echo "=== vite-plus binding ===" && ls -lh vite-plus-deploy/binding/*.node
-          echo "=== rolldown binding ===" && find vite-plus-deploy -name '*rolldown*openharmony*.node' -exec ls -lh {} \;
-          echo "=== oxfmt binding ===" && find vite-plus-deploy -path '*/oxfmt/bin/*' -exec ls -lh {} \;
-          echo "=== oxlint binding ===" && find vite-plus-deploy -name '*oxlint*' -path '*/bin/*' -exec ls -lh {} \;
+          echo "=== rolldown ohos ===" && find vite-plus-deploy -name '*rolldown*openharmony*.node' -exec ls -lh {} \;
+          echo "=== oxfmt ohos ===" && find vite-plus-deploy -name '*oxfmt*openharmony*.node' -exec ls -lh {} \;
+          echo "=== oxlint ===" && find vite-plus-deploy -name '*oxlint*' -path '*/bin/*' -exec ls -lh {} \;
 
       - name: Package runtime bundle
         run: |
