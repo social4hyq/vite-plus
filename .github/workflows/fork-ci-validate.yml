@@ -1,0 +1,25 @@
+name: Fork CI Validate
+
+# Fork-only wrapper to drive `reusable-release-build.yml` on social4hyq/vite-plus
+# without going through the `release.yml` repo-guard. Lets us prove the OHOS
+# matrix entries (aarch64-unknown-linux-ohos, x86_64-unknown-linux-ohos) compile
+# end-to-end against social4hyq/vite-task `ohos-first-class` before opening PR-B
+# upstream. Strip this file before sending the PR.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version stamp passed through to reusable-release-build.yml'
+        required: false
+        default: '0.0.0-fork-ci'
+        type: string
+
+permissions: {}
+
+jobs:
+  validate:
+    uses: ./.github/workflows/reusable-release-build.yml
+    with:
+      version: ${{ inputs.version }}
+      cache-key: 'fork-ci'
