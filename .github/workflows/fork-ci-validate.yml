@@ -15,11 +15,14 @@ on:
         default: '0.0.0-fork-ci'
         type: string
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   validate:
     uses: ./.github/workflows/reusable-release-build.yml
+    permissions:
+      contents: read
     with:
       version: ${{ inputs.version }}
       cache-key: 'fork-ci'
